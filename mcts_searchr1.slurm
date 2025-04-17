@@ -3,12 +3,12 @@
 #SBATCH --output=%x_%j.out
 #SBATCH --mail-user="bagannatasha@gmail.com"
 #SBATCH --mail-type="ALL"
-#SBATCH --partition="gpu-short"
-#SBATCH --time=03:00:00
+#SBATCH --partition="testing"
+#SBATCH --time=01:00:00
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
-#SBATCH --mem=2G
-#SBATCH --gres=gpu:2080_ti:4
+#SBATCH --mem=10G
+#SBATCH --gres=gpu:tesla_t4:1
 
 module purge
 
@@ -28,20 +28,24 @@ source $CONDA_BASE/etc/profile.d/conda.sh
 
 echo "### activating retriever env"
 conda activate retriever
+# making sure retriever executables are used
+export PATH="/home/s3648885/.conda/envs/retriever/bin:$PATH"
 
-bash retrieval_launch.sh &
+bash mcts_src/approach1/retrieval_launch.sh &
 server_pid=$!
 sleep 30
 echo "### retriever server running in background with PID $server_pid"
 
 echo "### activating searchr1 env"
-conda activate searchr1
+conda activate /home/s3648885/.conda/envs/searchr1
+# making sure searchr1 executables are used
+export PATH="/home/s3648885/.conda/envs/searchr1/bin:$PATH"
 
 echo "### MCTS inference"
-python mcts_src/mcts.py
+python mcts_src/approach1/mcts.py
 
+server_pid=$(pgrep -f "uvicorn.*7338")
 echo "### killing server with PID $server_pid"
-server_pid=$!
-pkill -f "uvicorn.*8000"
+pkill -f "uvicorn.*7338"
 
 echo "### job finished"

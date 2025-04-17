@@ -161,13 +161,13 @@ Score (0.0-1.0): """
         """
         root = MCTSNode(query)
 
-        for _ in range(self.max_iterations):
+        for iter in range(self.max_iterations):
             # Selection
-            # print("Testing: starting node selection", flush=True)
+            print(f"Testing: starting node selection #{iter}", flush=True)
             selected_node = self.select(root)
 
             # Expansion
-            # print("Testing: starting node expansion", flush=True)
+            print(f"Testing: starting node expansion #{iter}", flush=True)
             if len(selected_node.children) > 0:
                 new_nodes = self.expand(selected_node)
 
@@ -176,7 +176,7 @@ Score (0.0-1.0): """
                     selected_node = random.choice(new_nodes)
 
             # Backpropagation
-            # print("Testing: starting reward backpropagation", flush=True)
+            print(f"Testing: starting reward backpropagation #{iter}", flush=True)
             self.backpropagation(selected_node, self.evaluate_reward(selected_node))
 
             # early stopping
@@ -229,7 +229,7 @@ tokenizer, model, device = initialize_model()
 def main():
     query = "Which film has the director born later, Life Hits or It's In The Air?"
     mcts = MCTSSubqueryGenerator(query, max_iterations=100)
-    # print("Testing: starting MCTS", flush=True)
+    print("Testing: starting MCTS", flush=True)
     result = mcts.run_mcts(query)
 
     print(f"Original Query: {result['original_query']}", flush=True)

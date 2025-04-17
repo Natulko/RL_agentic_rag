@@ -10,10 +10,12 @@ def initialize_model():
     Initialize and return the tokenizer and model.
     """
     model_id = "PeterJinGo/SearchR1-nq_hotpotqa_train-llama3.2-3b-em-ppo"
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     
     tokenizer = transformers.AutoTokenizer.from_pretrained(model_id)
-    model = transformers.AutoModelForCausalLM.from_pretrained(model_id, torch_dtype=torch.bfloat16, device_map="auto")
+    bnb_config = transformers.BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_compute_dtype=torch.float16)
+    model = transformers.AutoModelForCausalLM.from_pretrained(model_id, quantization_config=bnb_config)
+    model = model.to(device)
     
     return tokenizer, model, device
 
