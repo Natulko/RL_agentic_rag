@@ -1,13 +1,13 @@
 #!/bin/bash
-#SBATCH --job-name=run_mcts_searchr1
+#SBATCH --job-name=run_mcts_searchr2
 #SBATCH --output=%x_%j.out
-#SBATCH --mail-user="bagannatasha@gmail.com"
+#SBATCH --mail-user="randomgrill73@gmail.com"
 #SBATCH --mail-type="ALL"
 #SBATCH --partition="gpu-short"
-#SBATCH --time=02:00:00
+#SBATCH --time=03:59:00
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
-#SBATCH --mem=10G
+#SBATCH --mem=70G
 #SBATCH --gres=gpu:2080_ti:4
 
 module purge
@@ -20,32 +20,40 @@ module load GCC/11.3.0
 
 cd /home/s3648885/data0/Search-R1
 
-# loading conda module
+# Load conda module
 module load Miniconda3/23.10.0-1
-# defining conda source
 CONDA_BASE=$(conda info --base)
 source $CONDA_BASE/etc/profile.d/conda.sh
 
-echo "### activating retriever env"
+# Activate retriever environment
 conda activate retriever
-# making sure retriever executables are used
-export PATH="/home/s3648885/.conda/envs/retriever/bin:$PATH"
 
+# Launch the retrieval server
+echo "### Launching retrieval server..."
 bash mcts_src/approach2/retrieval_launch.sh &
+sleep 60
 server_pid=$!
+echo "### Retrieval server launched with PID $server_pid"
+
+# Activate searchr1 environment
+conda activate searchr1
+
+echo $PATH
+
+echo "### Starting Ollama server..."
+ollama serve > ~/data0/Search-R1/ollama_server.log 2>&1 &
+ollama_pid=$!
 sleep 30
-echo "### retriever server running in background with PID $server_pid"
 
-echo "### activating searchr1 env"
-conda activate /home/s3648885/.conda/envs/searchr1
-# making sure searchr1 executables are used
-export PATH="/home/s3648885/.conda/envs/searchr1/bin:$PATH"
+echo "### Running MCTS inference..."
+python mcts_src/approach2/mcts.py --job_id $SLURM_JOB_ID
 
-echo "### MCTS inference"
-python mcts_src/approach2/mcts.py
+# Kill the server using the correct port
+echo "### Shutting down retrieval server (PID $((server_pid + 2)))..."
+kill $((server_pid + 2))
 
-server_pid=$(pgrep -f "uvicorn.*7348")
-echo "### killing server with PID $server_pid"
-pkill -f "uvicorn.*7348"
+# Kill the Ollama server
+echo "### Stopping Ollama server (PID $ollama_pid)..."
+kill $ollama_pid
 
-echo "### job finished"
+echo "### Job finished"
