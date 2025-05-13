@@ -295,7 +295,7 @@ def main():
         print(f"   A: {answer}", flush=True)
 
     print(f"\nFinal Answer: {result['final_answer']}", flush=True)
-    print(f"Confidence: {result['confidence']:.2f}", flush=True)
+    print(f"Confidence: {result['confidence']}", flush=True)
 
 
 if __name__ == "__main__":

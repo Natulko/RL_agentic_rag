@@ -146,7 +146,7 @@ def run_search_llm(question, tokenizer, model, device):
     """
     Run the search LLM with the given question.
     """
-    curr_eos = [151645, 151643]
+    curr_eos = [tokenizer.eos_token_id]
     curr_search_template = '\n{output_text}<information>{search_results}</information>\n'
 
     # Initialize the stopping criteria

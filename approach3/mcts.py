@@ -72,10 +72,11 @@ class MCTSNode:
 
 
 class MCTSSubqueryGenerator:
-    def __init__(self, root_query, max_iterations=10, branch_factor=2):
+    def __init__(self, root_query, max_iterations=10, branch_factor=2, reward_function=None):
         self.max_iterations = max_iterations
         self.root_query = root_query
         self.branch_factor = branch_factor
+        self.reward_function = reward_function or self.evaluate_reward_em
 
     def select(self, node):
         """
@@ -88,7 +89,7 @@ class MCTSSubqueryGenerator:
                 break
         return current
 
-    def expand(self, node):
+    def expand(self, node, true_answer=None):
         """
         Generate possible subqueries for the given node.
         """
@@ -124,7 +125,7 @@ Next subquestion: ...
         # if node is terminal, answer the subquery and evaluate the reward
         if "<complete>" in response:
             node.answer = run_search_llm(node.query, tokenizer_search, model_search, device_search)
-            self.evaluate_reward(node)
+            self.reward_function(node, true_answer) 
             return []
 
         # otherwise, create couple of alternative subqueries
@@ -147,9 +148,9 @@ Next subquestion: ...
 
         return node.children
 
-    def evaluate_reward(self, node):
+    def evaluate_reward_llm(self, node, true_answer=None):
         """
-        Evaluate value of the given node.
+        Evaluate value of the given node based on response from LLM.
         """
         prompt = f"""On a scale from 0.0 to 1.0, rate how relevant and helpful the following subquery is for answering the original question. Give only the numerical score.
 Original Question: {self.root_query}
@@ -166,6 +167,23 @@ Score (0.0-1.0): """
         except:
             node.reward = 0.5 # default score if parsing fails
 
+    def evaluate_reward_em(self, node, true_answer=None):
+        """
+        Evaluate value of the given node based on Exact String Matching.
+        """ 
+        if true_answer is None:
+            node.reward = 0.5 # default score if true answer is not provided
+
+        node_answer_normalized = self.node.answer.lower().strip()
+        true_answer_normalized = true_answer.lower().strip()
+
+        if node_answer_normalized == true_answer_normalized:
+            node.reward = 1.0
+        elif node_answer_normalized in true_answer_normalized or true_answer_normalized in node_answer_normalized:
+            node.reward = 0.8
+        else:
+            node.reward = 0
+
     def backpropagation(self, node, reward):
         """
         Update values of all nodes from the given node to the root.
@@ -175,7 +193,7 @@ Score (0.0-1.0): """
             current.update(reward)
             current = current.parent
 
-    def run_mcts(self, query, filename="mcts_tree"):
+    def run_mcts_single_query(self, query, true_answer=None, filename=None):
         """
         Run the MCTS and return the best path found.
         @param query: original question to be answered
@@ -190,7 +208,7 @@ Score (0.0-1.0): """
             print(f"Selected node: {selected_node.query}", flush=True)
 
             # Expansion
-            new_nodes = self.expand(selected_node)
+            new_nodes = self.expand(selected_node, true_answer)
 
             # If we expanded nodes, select one for simulation
             if new_nodes:
@@ -206,22 +224,23 @@ Score (0.0-1.0): """
             ):
                 break
         
-        graph = Digraph(comment="MCTS Tree", format="pdf")
-        self._build_tree(graph, root)
-        graph.render(filename, view=False)
+        if filename:
+            graph = Digraph(comment="MCTS Tree", format="pdf")
+            self._build_tree(graph, root)
+            graph.render(filename, view=False)
 
         # find the best path
-        best_path = self._dfs_best_terminal_node(root)[0]
+        best_terminal_node = self._dfs_best_terminal_node(root)[0]
 
-        if best_path:
-            path_data = best_path.get_path()
-            final_answer = best_path.answer
+        if best_terminal_node:
+            path_data = best_terminal_node.get_path()
+            final_answer = best_terminal_node.answer
 
             return {
                 "original_query": query,
                 "subqueries": path_data,
                 "final_answer": final_answer,
-                "confidence": best_path.reward / max(1, best_path.visits),
+                "confidence": best_terminal_node.reward,
             }
         else:
             return {
@@ -270,25 +289,50 @@ time.sleep(60)  # wait for the model to load
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--job_id', type=str, default="nojobid", help='SLURM Job ID')
+parser.add_argument('--run_settings', type=str, default="single_query", help='Run settings: single_query or db_eval')
 args = parser.parse_args()
 job_id = args.job_id
+run_settings = args.run_settings
 
 def main():
-    print(f"### Strating MCTS Subquery Generator with model {model}...", flush=True)
+    if run_settings == "single_query":
+        print(f"### Strating MCTS Subquery Generator with model {model}...", flush=True)
 
-    query = "Which film has the director born later, 'Life Hits' or 'It's In The Air'?"
-    mcts = MCTSSubqueryGenerator(query, max_iterations=100)
-    result = mcts.run_mcts(query, filename=f"visualizations/approach2/mcts_tree_{job_id}")
+        query = "Which film has the director born later, 'Life Hits' or 'It's In The Air'?"
+        mcts = MCTSSubqueryGenerator(query, max_iterations=10, reward_function=MCTSSubqueryGenerator.evaluate_reward_em)
+        result = mcts.run_mcts_single_query(query, filename=f"visualizations/approach2/mcts_tree_{job_id}")
 
-    print(f"Original Query: {result['original_query']}", flush=True)
-    print("\nSubquery Path:", flush=True)
-    for i, (subquery, answer) in enumerate(result["subqueries"]):
-        print(f"{i+1}. Q: {subquery}", flush=True)
-        if answer:
-            print(f"   A: {answer}", flush=True)
+        print(f"Original Query: {result['original_query']}", flush=True)
+        print("\nSubquery Path:", flush=True)
+        for i, (subquery, answer) in enumerate(result["subqueries"]):
+            print(f"{i+1}. Q: {subquery}", flush=True)
+            if answer:
+                print(f"   A: {answer}", flush=True)
 
-    print(f"\nFinal Answer: {result['final_answer']}", flush=True)
-    print(f"Confidence: {result['confidence']}", flush=True)
+        print(f"\nFinal Answer: {result['final_answer']}", flush=True)
+        print(f"Confidence: {result['confidence']}", flush=True)
+    
+    elif run_settings == "db_eval":
+        print(f"### Starting MCTS Subquery Generator with model {model}...", flush=True)
+
+        with open("qa_data.json", "r") as f:
+            qa_dataset = json.load(f)
+
+        for item in qa_dataset:
+            query = item["prompt"][0]["content"]
+            ground_truth = item.get("reward_model", {}).get("ground_truth", "")
+
+            mcts = MCTSSubqueryGenerator(
+                query,
+                max_iterations=10,
+                reward_function=MCTSSubqueryGenerator.evaluate_reward_em  # or any strategy
+            )
+            result = mcts.run_mcts_single_query(query, true_answer=ground_truth, filename=None)
+
+        print("### All queries processed.", flush=True)
+
+    else:
+        print("Invalid run_settings parameter. Please use 'single_query' or 'db_eval'.", flush=True)
 
 
 if __name__ == "__main__":
