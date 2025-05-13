@@ -1,0 +1,12 @@
+// MCTS Tree
+digraph {
+	node0 [label="Q: Which film has the director born later, 'Life Hits' or 'It's In The Air'?\nA: \nVisits: 4\nReward: 0.00" fillcolor=lightblue shape=box style="rounded,filled"]
+	node1 [label="Q: Who directed 'Life Hits' and 'It's In The Air'?\nA: \nVisits: 2\nReward: 0.00" fillcolor=lightblue shape=box style="rounded,filled"]
+	node0 -> node1
+	node2 [label="Q: What are the birth dates of the directors of 'Life Hits' and 'It's In The Air'?\nA: \nVisits: 1\nReward: 0.00" fillcolor=lightblue shape=box style="rounded,filled"]
+	node1 -> node2
+	node3 [label="Q: Who directed \"Life Hits\"?\nA: \nVisits: 2\nReward: 0.00" fillcolor=lightblue shape=box style="rounded,filled"]
+	node0 -> node3
+	node4 [label="Q: Who directed \"It's In The Air\"?\nA: \nVisits: 1\nReward: 0.00" fillcolor=lightblue shape=box style="rounded,filled"]
+	node3 -> node4
+}

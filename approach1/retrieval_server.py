@@ -212,6 +212,7 @@ class DenseRetriever(BaseRetriever):
     def __init__(self, config):
         super().__init__(config)
         self.index = faiss.read_index(self.index_path)
+        print("### Index loaded", flush=True)
         # if config.faiss_gpu:
         #     co = faiss.GpuMultipleClonerOptions()
         #     co.useFloat16 = True
@@ -377,5 +378,6 @@ def retrieve_endpoint(request: QueryRequest):
 
 
 if __name__ == "__main__":
-    # 3) Launch the server. By default, it listens on http://127.0.0.1:8000
-    uvicorn.run(app, host="0.0.0.0", port=7348)
+    print("### Starting retrieval server", flush=True)
+    # 3) Launch the server. By default, it listens on http://127.0.0.1:7896
+    uvicorn.run(app, host="0.0.0.0", port=7896)

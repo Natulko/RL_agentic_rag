@@ -1,22 +1,48 @@
 import transformers
 import torch
 import random
+import re
 from datasets import load_dataset
 import requests
+from ollama import chat
+from ollama import ChatResponse
 
-
-def initialize_model():
+def initialize_model(model_id):
     """
     Initialize and return the tokenizer and model.
     """
-    model_id = "PeterJinGo/SearchR1-nq_hotpotqa_train-llama3.2-3b-em-ppo"
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    device = torch.device(f"cuda" if torch.cuda.is_available() else "cpu")
     
-    tokenizer = transformers.AutoTokenizer.from_pretrained(model_id)
-    bnb_config = transformers.BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_compute_dtype=torch.float16)
-    model = transformers.AutoModelForCausalLM.from_pretrained(model_id, quantization_config=bnb_config, device_map="auto")
+    if torch.cuda.is_available():
+        tokenizer = transformers.AutoTokenizer.from_pretrained(model_id)
+        bnb_config = transformers.BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_compute_dtype=torch.float16)
+        model = transformers.AutoModelForCausalLM.from_pretrained(model_id, quantization_config=bnb_config)
+        model = model.to(device)
+    else:
+        tokenizer = transformers.AutoTokenizer.from_pretrained(model_id)
+        model = transformers.AutoModelForCausalLM.from_pretrained(model_id, torch_dtype=torch.bfloat16, device_map="auto")
     
     return tokenizer, model, device
+
+def run_ollama(prompt, model):
+    """
+    Generate answer to the prompt using ollama library.
+    @param prompt: user's input
+    """
+    response = chat(model=model, messages=[
+    {
+        'role': 'user',
+        'content': prompt,
+    },
+    ])
+
+    response = response['message']['content']
+    if model == 'qwen3:8b':
+        response = response.split('</think>')[-1]
+        # there might be few lines=\n in the beginning of response
+        response = [line for line in response.split('\n') if line.strip()][0]
+
+    return response
 
 def run_llm(prompt, tokenizer, model, device):
     """
@@ -102,7 +128,7 @@ def search(query: str):
             "topk": 3,
             "return_scores": True
         }
-    results = requests.post("http://127.0.0.1:7356/retrieve", json=payload).json()['result']
+    results = requests.post("http://127.0.0.1:7896/retrieve", json=payload).json()['result']
                 
     def _passages2string(retrieval_result):
         format_reference = ''
@@ -120,8 +146,8 @@ def run_search_llm(question, tokenizer, model, device):
     """
     Run the search LLM with the given question.
     """
-    curr_eos = [151645, 151643] # for Qwen2.5 series models
-    curr_search_template = '\n\n{output_text}<information>{search_results}</information>\n\n'
+    curr_eos = [tokenizer.eos_token_id]
+    curr_search_template = '\n{output_text}<information>{search_results}</information>\n'
 
     # Initialize the stopping criteria
     target_sequences = ["</search>", " </search>", "</search>\n", " </search>\n", "</search>\n\n", " </search>\n\n"]
@@ -134,7 +160,7 @@ def run_search_llm(question, tokenizer, model, device):
     if tokenizer.chat_template:
         prompt = tokenizer.apply_chat_template([{"role": "user", "content": prompt}], add_generation_prompt=True, tokenize=False)
 
-    print('\n\n################# [Start Reasoning + Searching] ##################\n\n', flush=True)
+    print('################# [Start Reasoning + Searching] ##################', flush=True)
     print(prompt, flush=True)
 
     # Encode the chat-formatted prompt and move it to the correct device
@@ -165,7 +191,7 @@ def run_search_llm(question, tokenizer, model, device):
         tmp_query = get_query(tokenizer.decode(outputs[0], skip_special_tokens=True))
         if tmp_query:
             # print(f'searching "{tmp_query}"...', flush=True)
-            search_results = search(tmp_query, flush=True)
+            search_results = search(tmp_query)
         else:
             search_results = ''
 
@@ -176,11 +202,25 @@ def run_search_llm(question, tokenizer, model, device):
     
     return output_text
 
+def clean_generated_output(output_text):
+    """
+    Clean up generated text that may have gone past stopping criteria
+    and extract just the relevant answer.
+    """
+    answer_match = re.search(r'<answer>(.*?)</answer>', output_text, re.DOTALL)
+    if answer_match:
+        return f"<answer>{answer_match.group(1)}</answer>"
+
+    return output_text
+
 def main():
+    # tokenizer, model, device = initialize_model("PeterJinGo/SearchR1-nq_hotpotqa_train-llama3.2-3b-em-ppo")
+
     # Define your question here
     question = "Which year was Steven Spielberg born?"
     # question = "Mike Barnett negotiated many contracts including which player that went on to become general manager of CSKA Moscow of the Kontinental Hockey League?"
-    result = run_search_llm(question)
+    # result = run_search_llm(question, tokenizer, model, device)
+    result = run_ollama(question, 'qwen3:8b')
     print(result, flush=True)
 
 if __name__ == "__main__":

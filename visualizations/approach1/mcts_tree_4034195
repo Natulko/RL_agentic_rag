@@ -1,0 +1,15 @@
+// MCTS Tree
+digraph {
+	node0 [label="Q: Which film has the director born later, 'Life Hits' or 'It's In The Air'?\nA: \nVisits: 4\nReward: 1.80" fillcolor=lightblue shape=box style="rounded,filled"]
+	node1 [label="Q: Who directed \"Life Hits\"?\nA: The film \"Life Hits\" was directed by Stephen Hereck. Therefore, the answer is Stephen Hereck. </answer>\nVisits: 2\nReward: 0.50" fillcolor=lightblue shape=box style="rounded,filled"]
+	node0 -> node1
+	node2 [label="Q: Who directed \"It's In The Air\"?\nA: </answer> Fred Zinnemann </answer>\nVisits: 1\nReward: 0.50" fillcolor=lightblue shape=box style="rounded,filled"]
+	node1 -> node2
+	node3 [label="Q: Who directed \"Life Hits\" and \"It's In The Air\"?\nA: A director of \"Life Hits\" was David Zucker, and for \"It's In The Air\" it was Randal Gragg. Therefore, the answer is David Zucker.
+</answer>\nVisits: 2\nReward: 1.45" fillcolor=lightblue shape=box style="rounded,filled"]
+	node0 -> node3
+	node4 [label="Q: When were the directors of \"Life Hits\" and \"It's In The Air\" born?\nA: physicist. Life Hits was released in 1960, so the director, Michael Cimino, was born in 1941. It's In The Air was released in 1935, so the director, Billy Wilder, was born in 1935, so the answer is 1935. </answer>\nVisits: 1\nReward: 0.00" fillcolor=lightblue shape=box style="rounded,filled"]
+	node3 -> node4
+	node5 [label="Q: What are the birth dates of the directors of \"Life Hits\" and \"It's In The Air\"?\nA:  23 March 1952 - for Life Hits </answer> 27 October 1952 - for It's In The Air </answer>\nVisits: 1\nReward: 1.00" fillcolor=lightblue shape=box style="rounded,filled"]
+	node3 -> node5
+}
