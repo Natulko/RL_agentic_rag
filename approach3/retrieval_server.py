@@ -24,6 +24,7 @@ parser.add_argument("--retriever_model", type=str, default="intfloat/e5-base-v2"
 
 args = parser.parse_args()
 
+
 def load_corpus(corpus_path: str):
     corpus = datasets.load_dataset(
         'json', 
@@ -68,6 +69,7 @@ def pooling(
         return pooler_output
     else:
         raise NotImplementedError("Pooling method not implemented!")
+
 
 class Encoder:
     def __init__(self, model_name, model_path, pooling_method, max_length, use_fp16):
@@ -324,6 +326,7 @@ class QueryRequest(BaseModel):
 
 app = FastAPI()
 
+
 # 1) Build a config (could also parse from arguments).
 #    In real usage, you'd parse your CLI arguments or environment variables.
 config = Config(
@@ -341,6 +344,7 @@ config = Config(
 
 # 2) Instantiate a global retriever so it is loaded once and reused.
 retriever = get_retriever(config)
+
 
 @app.post("/retrieve")
 def retrieve_endpoint(request: QueryRequest):
@@ -377,7 +381,8 @@ def retrieve_endpoint(request: QueryRequest):
     return {"result": resp}
 
 
+
 if __name__ == "__main__":
     print("### Starting retrieval server", flush=True)
-    # 3) Launch the server. By default, it listens on http://127.0.0.1:7896
-    uvicorn.run(app, host="0.0.0.0", port=7896)
+    # 3) Launch the server. By default, it listens on http://127.0.0.1:7480
+    uvicorn.run(app, host="0.0.0.0", port=7480)

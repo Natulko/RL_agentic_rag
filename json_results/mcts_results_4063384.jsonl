@@ -1,1 +1,0 @@
-{"original_query": "who got the first nobel prize in physics?", "true_answer": "Wilhelm Conrad R\u00f6ntgen", "subqueries": [["In which year was the first Nobel Prize in Physics awarded?", "<answer> 1901 </answer>"], ["Who was awarded the Nobel Prize in Physics in 1901?", "<answer> William Thomson</answer>"]], "final_answer": "<answer> William Thomson</answer>", "confidence": 0}
