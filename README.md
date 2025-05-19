@@ -68,7 +68,12 @@ Reward is evaluated by LLM, which is given original query, node's subquery and a
 Approach 2 uses the same MCTS tree structure and methods in the stages of MCTS. The difference is that instead of generating the answer for each of the node's subqueries, the answers are generated only in the end, for the nodes on the best path. The reward is the evaluated only based on relevance of a subquery to the original query (without an answer to it), which is given again by LLM, as in approach 1. This should be more efficient (as the time is saved on generation of each answer, which requires RAG), but may be less accurate, as less context for the reward evaluation is given.
 
 ## Approach 3
-Approach 3 takes code from approach 2 as a base. The only distinction in the MCTS procedure is that multiple reward methods can be executed. Implemented rewards:
-1. LLM-based reward (from approach 2) - evaluate_reward_llm()
-2. Exact string matching reward - evaluate_reward_em()
-3. Jaccard similarity (token overlap) - evaluate_reward_jaccard()
+Approach 3 takes code from approach 2 as a base. The main distinction in the MCTS procedure is that multiple reward methods can be executed. Implemented rewards:
+1. LLM-based reward (from approach 2) - reward_llm()
+2. Exact string matching reward - reward_em()
+3. Relaxed string matching reward - reward_em_relaxed()
+4. Jaccard similarity (token overlap) - reward_jaccard()
+5. Accuracy - reward_accuracy()
+6. F1 score - reward_f1()
+
+Additionally, the prompt was refined to better account for initially single-hop questions, which were earlier overcomplicated by the model.

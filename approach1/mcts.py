@@ -100,7 +100,7 @@ class MCTSSubqueryGenerator:
         prompt = f"""You are given a complex question and an evolving list of direct subquestions aimed at resolving it step by step.
 Your task is to simplify the question by generating the **next logical direct subquestion** in the sequence.
 - If no subquestions are provided, generate the **first** one to begin decomposition.
-- If subquestions are already listed, generate the **next** needed to move toward an answer.
+- If subquestions are already listed, generate the **next** needed to move toward an answer. You may use answers provided.
 - If the original question is fully resolved by the last subquestion, return "<complete>".
 
 Example:  
@@ -147,9 +147,9 @@ Next subquestion: ...
         print(subqueries, flush=True)
 
         for subquery in subqueries:
-            child_prev_subqueries = node.prev_subqueries + [subquery]
             child = node.add_child(subquery, child_prev_subqueries)
             child.answer = run_search_llm(subquery, tokenizer_search, model_search, device_search)
+            child_prev_subqueries = node.prev_subqueries + [f"Q:{subquery}, A:{child.answer}"]
 
         return node.children
 
